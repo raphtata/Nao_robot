@@ -1,0 +1,3 @@
+# Dependances pour la conversation vocale avec Groq LLM (Python 2.7 compatible)
+requests==2.27.1
+paramiko==2.7.2
