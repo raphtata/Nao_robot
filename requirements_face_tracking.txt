@@ -1,0 +1,6 @@
+# Pour le suivi facial avec webcam PC (nao_face_tracking.py)
+opencv-python==4.8.1.78
+numpy==1.24.3
+
+# Pour le suivi facial avec camera NAO (nao_face_tracking_nao_camera.py)
+# Aucune dependance externe requise - utilise uniquement le SDK NAOqi
