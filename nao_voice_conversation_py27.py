@@ -536,7 +536,7 @@ class VoiceConversation:
         except Exception as e:
             print("X Erreur lors de la synthese vocale:", str(e))
     
-    def conversation_loop(self, num_exchanges=3):
+    def conversation_loop(self, num_exchanges=5):
         """Boucle de conversation"""
         print()
         print("-" * 60)
@@ -546,31 +546,40 @@ class VoiceConversation:
         
         self.speak("Bonjour! je suis NAO, un robot assistant. Enchanté ! Comment puis-je t'aider ?")
         
-        for i in range(num_exchanges):
-            print()
-            print("=" * 60)
-            print("Echange %d/%d" % (i + 1, num_exchanges))
-            print("=" * 60)
+        try:
+            for i in range(num_exchanges):
+                print()
+                print("=" * 60)
+                print("Echange %d/%d" % (i + 1, num_exchanges))
+                print("=" * 60)
+                
+                # Ecouter l'utilisateur (4 secondes)
+                user_input = self.listen(duration=5)
+                
+                if not user_input:
+                    self.speak("Je n'ai pas compris. Pouvez-vous repeter?")
+                    continue
+                
+                # Animation de reflexion apres l'enregistrement (bloquante)
+                self.thinking_animation()
+                
+                # Obtenir la reponse du LLM (bloquant - appel API)
+                response = self.get_llm_response(user_input)
+                
+                # Faire parler le robot (bloquant - attend la fin de la parole)
+                self.speak(response)
+                
+                time.sleep(1)
             
-            # Ecouter l'utilisateur (4 secondes)
-            user_input = self.listen(duration=5)
-            
-            if not user_input:
-                self.speak("Je n'ai pas compris. Pouvez-vous repeter?")
-                continue
-            
-            # Animation de reflexion apres l'enregistrement (bloquante)
-            self.thinking_animation()
-            
-            # Obtenir la reponse du LLM (bloquant - appel API)
-            response = self.get_llm_response(user_input)
-            
-            # Faire parler le robot (bloquant - attend la fin de la parole)
-            self.speak(response)
-            
-            time.sleep(1)
+            self.speak("Merci pour cette conversation! A bientot!")
         
-        self.speak("Merci pour cette conversation! A bientot!")
+        except KeyboardInterrupt:
+            # Arreter le suivi facial si actif lors de l'interruption
+            if self.tracking_active:
+                print()
+                print(">>> Arret du suivi facial en cours...")
+                self.stop_face_tracking()
+            raise
 
 
 def main():
@@ -613,12 +622,26 @@ def main():
     except KeyboardInterrupt:
         print()
         print("Interruption clavier")
+        # Arreter le suivi facial si actif
+        if conversation.tracking_active:
+            print("Arret du suivi facial...")
+            conversation.stop_face_tracking()
     
     except Exception as e:
         print()
         print("X Erreur:", str(e))
+        # Arreter le suivi facial si actif
+        if conversation.tracking_active:
+            conversation.stop_face_tracking()
     
     finally:
+        # S'assurer que le suivi facial est bien arrete
+        try:
+            if conversation.tracking_active:
+                conversation.stop_face_tracking()
+        except:
+            pass
+        
         print()
         print("-" * 60)
         print("OK Programme termine avec succes!")
