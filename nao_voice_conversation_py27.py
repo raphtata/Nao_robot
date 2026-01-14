@@ -64,6 +64,10 @@ class VoiceConversation:
         self.memory = None
         self.audio_device = None
         self.motion = None
+        self.leds = None
+        self.tracker = None
+        self.face_detection = None
+        self.audio_player = None
         
         # Configuration Groq
         self.groq_api_key = env_vars.get("GROQ_API_KEY", "")
@@ -72,6 +76,9 @@ class VoiceConversation:
         
         # Historique de conversation
         self.conversation_history = []
+        
+        # Etat du suivi facial
+        self.tracking_active = False
         
     def connect(self):
         """Connexion au robot NAO"""
@@ -82,6 +89,10 @@ class VoiceConversation:
             self.memory = ALProxy("ALMemory", self.nao_ip, self.nao_port)
             self.audio_device = ALProxy("ALAudioDevice", self.nao_ip, self.nao_port)
             self.motion = ALProxy("ALMotion", self.nao_ip, self.nao_port)
+            self.leds = ALProxy("ALLeds", self.nao_ip, self.nao_port)
+            self.tracker = ALProxy("ALTracker", self.nao_ip, self.nao_port)
+            self.face_detection = ALProxy("ALFaceDetection", self.nao_ip, self.nao_port)
+            self.audio_player = ALProxy("ALAudioPlayer", self.nao_ip, self.nao_port)
             print("OK Connexion etablie avec succes!")
             return True
         except Exception as e:
@@ -110,6 +121,103 @@ class VoiceConversation:
         except Exception as e:
             print("X Erreur de configuration:", str(e))
             return False
+    
+    def start_face_tracking(self):
+        """Demarrer le suivi facial pendant l'ecoute"""
+        try:
+            if self.tracking_active:
+                return
+            
+            print(">>> Activation du suivi facial...")
+            
+            # Activer les moteurs de la tete pour le suivi
+            self.motion.setStiffnesses("Head", 1.0)
+            time.sleep(0.2)
+            
+            # Position initiale
+            self.motion.setAngles("HeadYaw", 0.0, 0.3)
+            self.motion.setAngles("HeadPitch", 0.0, 0.3)
+            time.sleep(0.3)
+            
+            # Configurer la detection de visages
+            self.face_detection.setParameter("Period", 500)
+            self.face_detection.enableTracking(True)
+            
+            # Configurer le tracker pour suivre avec la tete
+            self.tracker.setMode("Head")
+            self.tracker.registerTarget("Face", 0.1)
+            
+            # Demarrer le suivi
+            self.tracker.track("Face")
+            
+            self.tracking_active = True
+            print(">>> Suivi facial active - le robot vous suit du regard")
+            
+        except Exception as e:
+            print("X Erreur suivi facial:", str(e))
+            import traceback
+            traceback.print_exc()
+    
+    def stop_face_tracking(self):
+        """Arreter le suivi facial"""
+        try:
+            if not self.tracking_active:
+                return
+            
+            print(">>> Arret du suivi facial...")
+            
+            # Arreter le tracker
+            self.tracker.stopTracker()
+            self.tracker.unregisterAllTargets()
+            
+            # Remettre la tete en position initiale
+            self.motion.setAngles("HeadYaw", 0.0, 0.3)
+            self.motion.setAngles("HeadPitch", 0.0, 0.3)
+            time.sleep(0.5)
+            
+            # Desactiver les moteurs de la tete
+            self.motion.setStiffnesses("Head", 0.0)
+            
+            self.tracking_active = False
+            print(">>> Suivi facial desactive")
+            
+        except Exception as e:
+            print("X Erreur arret suivi:", str(e))
+            import traceback
+            traceback.print_exc()
+    
+    def set_listening_eyes(self):
+        """Effet lumineux des yeux pendant l'ecoute (comme reconnaissance vocale)"""
+        try:
+            # Effet de rotation des LEDs comme dans la reconnaissance vocale NAOqi
+            # Utilise un effet rotatif bleu/cyan
+            self.leds.post.fadeRGB("FaceLeds", 0x0000FF, 0.5)  # Bleu
+            time.sleep(0.1)
+            self.leds.post.fadeRGB("FaceLeds", 0x00FFFF, 0.5)  # Cyan
+        except Exception as e:
+            print("X Erreur LEDs:", str(e))
+    
+    def reset_eyes(self):
+        """Remettre les yeux en blanc (normal)"""
+        try:
+            self.leds.fadeRGB("FaceLeds", 0xFFFFFF, 0.5)  # Blanc
+        except Exception as e:
+            print("X Erreur reset LEDs:", str(e))
+    
+    def play_beep(self, frequency=800, duration=0.2):
+        """Jouer un son bip avec une frequence donnee"""
+        try:
+            # Utiliser ALAudioDevice pour generer un ton
+            # Frequence en Hz, duree en secondes
+            self.audio_device.playWebStream("http://www.soundjay.com/button/beep-07.wav", 0.5, 0, 0)
+        except:
+            # Si ca ne marche pas, utiliser les LEDs comme feedback visuel
+            try:
+                self.leds.fadeRGB("EarLeds", 0x00FF00, 0.1)
+                time.sleep(duration)
+                self.leds.fadeRGB("EarLeds", 0x000000, 0.1)
+            except:
+                pass
     
     def thinking_animation(self):
         """Animation de reflexion: gratter la tete avec mouvement et son"""
@@ -212,8 +320,21 @@ class VoiceConversation:
             except:
                 pass  # Pas grave si rien n'etait en cours
             
-            # Effet sonore de debut d'enregistrement
+            # Effet sonore de debut d'enregistrement (bip court)
             print(">>> Bip - Debut d'enregistrement")
+            try:
+                # Utiliser un ton simple avec ALAudioDevice
+                # Jouer un son systeme ou utiliser les LEDs des yeux
+                self.leds.fadeRGB("FaceLeds", 0x00FF00, 0.1)
+                time.sleep(0.2)
+            except:
+                pass
+            
+            # Activer le suivi facial pendant l'ecoute
+            self.start_face_tracking()
+            
+            # Effet lumineux des yeux (comme reconnaissance vocale)
+            self.set_listening_eyes()
             
             # Demarrer l'enregistrement
             # Format: 16000 Hz, 16 bits, mono, WAV
@@ -221,23 +342,16 @@ class VoiceConversation:
             self.audio_recorder.startMicrophonesRecording(audio_file, "wav", 16000, channels)
             
             print(">>> Enregistrement en cours...")
+            print(">>> Suivi facial actif - le robot vous regarde")
             
-            # Activer les moteurs de la tete
-            try:
-                self.motion.setStiffnesses("Head", 0.15)
-            except:
-                pass
-            
-            # Barre de progression avec mouvement de tete
+            # Barre de progression avec effet LED alternatif
             for i in range(duration):
-                # Mouvement de tete d'avant en arriere (hochement)
+                # Alterner les couleurs des yeux pendant l'ecoute
                 try:
                     if i % 2 == 0:
-                        # Incliner vers l'avant
-                        self.motion.setAngles("HeadPitch", 0.1, 0.3)
+                        self.leds.post.fadeRGB("FaceLeds", 0x0000FF, 0.3)  # Bleu
                     else:
-                        # Revenir en arriere
-                        self.motion.setAngles("HeadPitch", -0.1, 0.3)
+                        self.leds.post.fadeRGB("FaceLeds", 0x00FFFF, 0.3)  # Cyan
                 except:
                     pass
                 
@@ -246,18 +360,27 @@ class VoiceConversation:
                 if remaining > 0:
                     print(">>> %d secondes restantes..." % remaining)
             
-            # Remettre la tete droite
-            try:
-                self.motion.setAngles("HeadPitch", 0.0, 0.3)
-                time.sleep(0.3)
-                self.motion.setStiffnesses("Head", 0.0)
-            except:
-                pass
+            # Arreter le suivi facial
+            self.stop_face_tracking()
+            
+            # Remettre les yeux en blanc
+            self.reset_eyes()
             
             # Arreter l'enregistrement
             self.audio_recorder.stopMicrophonesRecording()
             
+            # Effet sonore de fin d'enregistrement (double bip)
             print(">>> Bip bip - Fin d'enregistrement")
+            try:
+                # Double flash LED yeux en vert pour effet bip bip
+                self.leds.fadeRGB("FaceLeds", 0x00FF00, 0.1)
+                time.sleep(0.15)
+                self.leds.fadeRGB("FaceLeds", 0x000000, 0.1)
+                time.sleep(0.15)
+                self.leds.fadeRGB("FaceLeds", 0x00FF00, 0.1)
+                time.sleep(0.15)
+            except:
+                pass
             
             print()
             print("=" * 60)
