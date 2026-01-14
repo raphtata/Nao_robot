@@ -12,6 +12,10 @@ dist/
 build/
 lib/
 
+# Secrets et configuration
+.env
+*.env
+
 # IDE
 .vscode/
 .idea/
@@ -25,3 +29,7 @@ Thumbs.db
 # NAOqi SDK
 naoqi-sdk/
 pynaoqi-python*/
+
+# Fichiers temporaires NAO
+temp_audio.wav
+*.wav
