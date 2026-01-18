@@ -204,20 +204,22 @@ class VoiceConversation:
         except Exception as e:
             print("X Erreur reset LEDs:", str(e))
     
-    def play_beep(self, frequency=800, duration=0.2):
+    def play_beep(self, frequency=1200, duration=0.2):
         """Jouer un son bip avec une frequence donnee"""
         try:
+            print("Jouer un son bip avec une frequence donnee")
+
             # Utiliser ALAudioDevice pour generer un ton
             # Frequence en Hz, duree en secondes
-            self.audio_device.playWebStream("http://www.soundjay.com/button/beep-07.wav", 0.5, 0, 0)
+            #self.audio_device.playWebStream("http://www.soundjay.com/button/beep-07.wav", 0.5, 0, 0)
+            self.audio_device.playSine(frequency, 50,-1, duration)
+            self.audio_device.playSine(1500, 50,-1, duration)
+
+            self.leds.fadeRGB("EarLeds", 0x00FF00, 0.3)
+            time.sleep(duration)
+            self.leds.fadeRGB("EarLeds", 0x0000AF, 0.3)
         except:
-            # Si ca ne marche pas, utiliser les LEDs comme feedback visuel
-            try:
-                self.leds.fadeRGB("EarLeds", 0x00FF00, 0.1)
-                time.sleep(duration)
-                self.leds.fadeRGB("EarLeds", 0x000000, 0.1)
-            except:
-                pass
+            pass
     
     def thinking_animation(self):
         """Animation de reflexion: gratter la tete avec mouvement et son"""
@@ -333,9 +335,9 @@ class VoiceConversation:
             # Activer le suivi facial pendant l'ecoute
             self.start_face_tracking()
             
-            # Effet lumineux des yeux (comme reconnaissance vocale)
+            # Effet lumineux des yeux (comme reconnaissance vocale) et bip
             self.set_listening_eyes()
-            
+            self.play_beep()
             # Demarrer l'enregistrement
             # Format: 16000 Hz, 16 bits, mono, WAV
             channels = [0, 0, 1, 0]  # Front microphone
@@ -474,7 +476,7 @@ class VoiceConversation:
                 "role": "system",
                 "content": "Tu es NAO, un robot assistant sympathique et serviable. "
                           "Reponds de maniere concise et naturelle en francais. "
-                          "Garde tes reponses relativement courtes car elles seront "
+                          "Garde tes reponses pas trop longues mais avec quelques explications car elles seront "
                           "prononcees par un robot."
             }
             
