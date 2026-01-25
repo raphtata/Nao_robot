@@ -80,6 +80,11 @@ class VoiceConversation:
         # Etat du suivi facial
         self.tracking_active = False
         
+        # Configuration detection de silence
+        self.silence_threshold = 1100  # Seuil de volume (0-32768)
+        self.silence_duration = 1.5   # Duree de silence avant arret (secondes)
+        self.max_recording_duration = 10  # Duree max d'enregistrement (secondes)
+        
     def connect(self):
         """Connexion au robot NAO"""
         print("Connexion au robot NAO a %s:%d..." % (self.nao_ip, self.nao_port))
@@ -221,6 +226,66 @@ class VoiceConversation:
         except:
             pass
     
+    def _record_with_silence_detection(self, max_duration):
+        """Enregistrer avec detection de silence intelligente
+        
+        Args:
+            max_duration: Duree maximale d'enregistrement
+        """
+        start_time = time.time()
+        last_sound_time = start_time
+        silence_start_time = None
+        check_interval = 0.1  # Verifier toutes les 100ms
+        
+        print(">>> Parlez maintenant... (arret automatique apres %.1fs de silence)" % self.silence_duration)
+        
+        while True:
+            elapsed = time.time() - start_time
+            
+            # Verifier si duree max atteinte
+            if elapsed >= max_duration:
+                print(">>> Duree maximale atteinte (%ds)" % max_duration)
+                break
+            
+            # Lire le niveau audio du microphone
+            try:
+                # ALAudioDevice.getFrontMicEnergy() retourne l'energie du micro avant
+                # Valeur entre 0 et 32768
+                self.audio_device.enableEnergyComputation()
+                audio_level = self.audio_device.getFrontMicEnergy()
+                
+                # Alterner les couleurs des yeux
+                if int(elapsed * 10) % 2 == 0:
+                    self.leds.post.fadeRGB("FaceLeds", 0x0000FF, 0.3)  # Bleu
+                else:
+                    self.leds.post.fadeRGB("FaceLeds", 0x00FFFF, 0.3)  # Cyan
+                
+                # Detecter si du son est present
+                if audio_level > self.silence_threshold:
+                    # Son detecte
+                    last_sound_time = time.time()
+                    silence_start_time = None
+                    
+                    # Indicateur visuel de parole detectee
+                    if int(elapsed * 10) % 5 == 0:
+                        print(">>> Parole detectee (niveau: %d)" % audio_level)
+                else:
+                    # Silence detecte
+                    if silence_start_time is None:
+                        silence_start_time = time.time()
+                    
+                    silence_elapsed = time.time() - silence_start_time
+                    
+                    # Si silence suffisamment long ET qu'on a deja enregistre du son
+                    if silence_elapsed >= self.silence_duration and (last_sound_time - start_time) > 0.5:
+                        print(">>> Silence detecte pendant %.1fs - arret automatique" % silence_elapsed)
+                        break
+                
+            except Exception as e:
+                print("X Erreur lecture audio:", str(e))
+            
+            time.sleep(check_interval)
+    
     def thinking_animation(self):
         """Animation de reflexion: gratter la tete avec mouvement et son"""
         print()
@@ -298,17 +363,22 @@ class VoiceConversation:
             except:
                 pass
     
-    def listen(self, duration=5):
+    def listen(self, max_duration=10, use_silence_detection=True):
         """Ecouter via le microphone de NAO et transcrire avec Whisper
         
         Args:
-            duration: Duree d'enregistrement en secondes
+            max_duration: Duree maximale d'enregistrement en secondes
+            use_silence_detection: Utiliser la detection de silence intelligente
         """
         print()
         print("=" * 60)
         print("ENREGISTREMENT EN COURS - Parlez maintenant!")
         print("=" * 60)
-        print("Duree: %d secondes" % duration)
+        if use_silence_detection:
+            print("Mode: Detection de silence intelligente")
+            print("Duree max: %d secondes" % max_duration)
+        else:
+            print("Duree fixe: %d secondes" % max_duration)
         print()
         
         # Fichier audio temporaire (utiliser /tmp qui existe toujours)
@@ -346,21 +416,26 @@ class VoiceConversation:
             print(">>> Enregistrement en cours...")
             print(">>> Suivi facial actif - le robot vous regarde")
             
-            # Barre de progression avec effet LED alternatif
-            for i in range(duration):
-                # Alterner les couleurs des yeux pendant l'ecoute
-                try:
-                    if i % 2 == 0:
-                        self.leds.post.fadeRGB("FaceLeds", 0x0000FF, 0.3)  # Bleu
-                    else:
-                        self.leds.post.fadeRGB("FaceLeds", 0x00FFFF, 0.3)  # Cyan
-                except:
-                    pass
-                
-                time.sleep(1)
-                remaining = duration - i - 1
-                if remaining > 0:
-                    print(">>> %d secondes restantes..." % remaining)
+            if use_silence_detection:
+                # Mode detection de silence intelligente
+                print(">>> Detection de silence active - parlez naturellement")
+                self._record_with_silence_detection(max_duration)
+            else:
+                # Mode duree fixe (ancien comportement)
+                for i in range(max_duration):
+                    # Alterner les couleurs des yeux pendant l'ecoute
+                    try:
+                        if i % 2 == 0:
+                            self.leds.post.fadeRGB("FaceLeds", 0x0000FF, 0.3)  # Bleu
+                        else:
+                            self.leds.post.fadeRGB("FaceLeds", 0x00FFFF, 0.3)  # Cyan
+                    except:
+                        pass
+                    
+                    time.sleep(1)
+                    remaining = max_duration - i - 1
+                    if remaining > 0:
+                        print(">>> %d secondes restantes..." % remaining)
             
             # Arreter le suivi facial
             self.stop_face_tracking()
@@ -555,8 +630,8 @@ class VoiceConversation:
                 print("Echange %d/%d" % (i + 1, num_exchanges))
                 print("=" * 60)
                 
-                # Ecouter l'utilisateur (4 secondes)
-                user_input = self.listen(duration=5)
+                # Ecouter l'utilisateur avec detection de silence intelligente
+                user_input = self.listen(max_duration=10, use_silence_detection=True)
                 
                 if not user_input:
                     self.speak("Je n'ai pas compris. Pouvez-vous repeter?")
