@@ -33,3 +33,8 @@ pynaoqi-python*/
 # Fichiers temporaires NAO
 temp_audio.wav
 *.wav
+
+#images
+*.jpg
+*.png
+*.jpeg

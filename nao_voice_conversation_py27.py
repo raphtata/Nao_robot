@@ -85,6 +85,9 @@ class VoiceConversation:
         self.silence_duration = 1.5   # Duree de silence avant arret (secondes)
         self.max_recording_duration = 10  # Duree max d'enregistrement (secondes)
         
+        # Configuration gestes expressifs
+        self.use_expressive_gestures = True  # Activer les gestes pendant la parole
+        
     def connect(self):
         """Connexion au robot NAO"""
         print("Connexion au robot NAO a %s:%d..." % (self.nao_ip, self.nao_port))
@@ -599,17 +602,203 @@ class VoiceConversation:
             print("X Erreur lors de l'appel a Groq:", str(e))
             return "Desole, je n'ai pas pu traiter votre demande."
     
+    def _perform_expressive_gesture(self, gesture_type="neutral"):
+        """Effectuer un geste expressif avec mains en avant et mouvement de tete
+        
+        Gestes realistes: mains projetees vers l'avant, tete qui bouge
+        
+        Args:
+            gesture_type: Type de geste (neutral, explain, question, emphasis)
+        """
+        try:
+            import random
+            import math
+            
+            # Activer les moteurs des bras ET de la tete
+            self.motion.setStiffnesses("LArm", 0.8)
+            self.motion.setStiffnesses("RArm", 0.8)
+            self.motion.setStiffnesses("Head", 0.6)
+            
+            # Verrouiller les jambes pour stabilite
+            self.motion.setStiffnesses("LLeg", 1.0)
+            self.motion.setStiffnesses("RLeg", 1.0)
+            time.sleep(0.1)
+            
+            if gesture_type == "explain":
+                # Geste d'explication: mains vers l'avant FLUIDE
+                names = ["LShoulderPitch", "LShoulderRoll", "LElbowRoll", "LElbowYaw",
+                        "RShoulderPitch", "RShoulderRoll", "RElbowRoll", "RElbowYaw",
+                        "HeadPitch", "HeadYaw"]
+                # Mouvement LENT et fluide (0.5 au lieu de 0.25)
+                angles = [0.0, 0.6, -0.4, -0.8, 0.0, -0.6, 0.4, 0.8, -0.1, 0.0]
+                self.motion.post.setAngles(names, angles, 0.2)
+                
+            elif gesture_type == "question":
+                # Geste de question: main levee FLUIDE
+                side = random.choice(["L", "R"])
+                if side == "L":
+                    names = ["LShoulderPitch", "LShoulderRoll", "LElbowRoll", "LElbowYaw",
+                            "HeadPitch", "HeadYaw"]
+                    # Mouvement LENT et fluide
+                    angles = [-0.3, 0.5, -1.2, -0.5, 0.1, 0.2]
+                else:
+                    names = ["RShoulderPitch", "RShoulderRoll", "RElbowRoll", "RElbowYaw",
+                            "HeadPitch", "HeadYaw"]
+                    angles = [-0.3, -0.5, 1.2, 0.5, 0.1, -0.2]
+                self.motion.post.setAngles(names, angles, 0.2)
+                
+            elif gesture_type == "emphasis":
+                # Geste d'emphase: mouvement FLUIDE en 2 phases (au lieu de 3)
+                names = ["LShoulderPitch", "LShoulderRoll", "LElbowRoll",
+                        "RShoulderPitch", "RShoulderRoll", "RElbowRoll",
+                        "HeadPitch", "HeadYaw"]
+                # Phase 1: mains vers l'avant LENTEMENT
+                angles = [0.0, 0.5, -0.5, 0.0, -0.5, 0.5, -0.15, 0.0]
+                self.motion.post.setAngles(names, angles, 0.2)
+                time.sleep(0.3)
+                # Phase 2: leger mouvement vers le haut LENTEMENT
+                angles = [-0.1, 0.4, -0.6, -0.1, -0.4, 0.6, 0.0, 0.0]
+                self.motion.post.setAngles(names, angles, 0.2)
+                
+            else:  # neutral
+                # Geste neutre: mouvement TRES FLUIDE
+                side = random.choice(["L", "R"])
+                head_yaw = random.choice([-0.15, 0.15])
+                if side == "L":
+                    names = ["LShoulderPitch", "LShoulderRoll", "LElbowRoll", "HeadYaw"]
+                    # Mouvement TRES LENT pour fluidite maximale
+                    angles = [0.2, 0.4, -0.5, head_yaw]
+                else:
+                    names = ["RShoulderPitch", "RShoulderRoll", "RElbowRoll", "HeadYaw"]
+                    angles = [0.2, -0.4, 0.5, head_yaw]
+                self.motion.post.setAngles(names, angles, 0.2)
+                
+        except Exception as e:
+            print("X Erreur geste expressif:", str(e))
+    
+    def _reset_arms_to_rest(self):
+        """Remettre les bras et la tete en position de repos FLUIDE"""
+        try:
+            import math
+            
+            # Position repos: bras croises devant le torse + tete droite
+            names = ["LShoulderPitch", "LShoulderRoll", "LElbowRoll", "LElbowYaw",
+                    "RShoulderPitch", "RShoulderRoll", "RElbowRoll", "RElbowYaw",
+                    "HeadPitch", "HeadYaw"]
+            
+            # Position croisee naturelle + tete centree
+            angles = [1.4, 0.1, -1.0, -0.5, 1.4, -0.1, 1.0, 0.5, 0.0, 0.0]
+            
+            # Retour LENT et fluide (0.5 au lieu de 0.3)
+            self.motion.setAngles(names, angles, 0.7)
+            time.sleep(0.6)
+            
+            # Desactiver les moteurs des bras et tete
+            self.motion.setStiffnesses("LArm", 0.0)
+            self.motion.setStiffnesses("RArm", 0.0)
+            self.motion.setStiffnesses("Head", 0.0)
+            
+            # Deverrouiller les jambes
+            self.motion.setStiffnesses("LLeg", 0.0)
+            self.motion.setStiffnesses("RLeg", 0.0)
+            
+        except Exception as e:
+            print("X Erreur reset bras:", str(e))
+    
+    def _detect_gesture_type(self, text):
+        """Detecter le type de geste approprie selon le texte
+        
+        Args:
+            text: Texte a analyser
+            
+        Returns:
+            Type de geste: explain, question, emphasis, neutral
+        """
+        import random
+        
+        text_lower = text.lower() if isinstance(text, unicode) else text.decode('utf-8').lower()
+        
+        # Mots cles pour differents types de gestes (plus de mots pour plus de detection)
+        question_words = [u'pourquoi', u'comment', u'quoi', u'qui', u'où', u'quand', u'quel', u'quelle', u'?']
+        emphasis_words = [u'important', u'attention', u'!', u'vraiment', u'absolument', u'certainement',
+                         u'très', u'super', u'magnifique', u'incroyable', u'génial', u'excellent']
+        explain_words = [u'parce que', u'donc', u'ainsi', u'par exemple', u'c\'est-à-dire', u'en effet',
+                        u'voici', u'voilà', u'regardez', u'comme', u'si', u'alors']
+        
+        # Verifier les mots cles
+        for word in emphasis_words:
+            if word in text_lower:
+                return "emphasis"
+        
+        for word in question_words:
+            if word in text_lower:
+                return "question"
+        
+        for word in explain_words:
+            if word in text_lower:
+                return "explain"
+        
+        # 70% de chance de geste neutre (au lieu de 30%) - plus de gestes!
+        if random.random() < 0.7:
+            return "neutral"
+        
+        return None
+    
+    def _speak_with_punctuation_gestures(self, text):
+        """Parler avec gestes UNIQUEMENT aux phrases completes
+        
+        Gestes seulement aux points/points d'exclamation/interrogation
+        PAS de geste aux virgules (trop frequent)
+        """
+        import re
+        
+        # Decouper le texte par phrases completes (. ! ?)
+        # Garder les virgules dans les segments
+        sentences = re.split(r'([.!?])', text)
+        
+        for i, segment in enumerate(sentences):
+            segment = segment.strip()
+            if not segment:
+                continue
+            
+            # Si c'est une fin de phrase (. ! ?), faire une pause
+            if segment in ['.', '!', '?']:
+                # Pause et retour position repos SEULEMENT aux phrases
+                if self.use_expressive_gestures:
+                    self._reset_arms_to_rest()
+                time.sleep(0.4)
+                continue
+            
+            # Pour chaque phrase, faire UN SEUL geste au debut
+            if self.use_expressive_gestures:
+                gesture_type = self._detect_gesture_type(segment)
+                if gesture_type:
+                    print(">>> Geste: %s" % gesture_type)
+                    self._perform_expressive_gesture(gesture_type)
+                else:
+                    print(">>> Geste: neutral")
+                    self._perform_expressive_gesture("neutral")
+            
+            # Dire la phrase complete (avec virgules incluses)
+            segment_utf8 = segment.encode('utf-8')
+            self.tts.say(segment_utf8)
+    
     def speak(self, text):
-        """Faire parler le robot"""
+        """Faire parler le robot avec gestes expressifs synchronises"""
         print()
         print("NAO dit: '%s'" % text)
         try:
             # Convertir en unicode si necessaire pour Python 2.7
             if isinstance(text, str):
                 text = text.decode('utf-8')
-            # Convertir en UTF-8 pour NAO (preserve les accents francais)
-            text_utf8 = text.encode('utf-8')
-            self.tts.say(text_utf8)
+            
+            # Parler avec gestes synchronises aux ponctuations
+            self._speak_with_punctuation_gestures(text)
+            
+            # Remettre les bras en position de repos a la fin
+            if self.use_expressive_gestures:
+                self._reset_arms_to_rest()
+                
         except Exception as e:
             print("X Erreur lors de la synthese vocale:", str(e))
     
