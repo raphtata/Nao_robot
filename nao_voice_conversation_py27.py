@@ -625,53 +625,79 @@ class VoiceConversation:
             time.sleep(0.1)
             
             if gesture_type == "explain":
-                # Geste d'explication: mains vers l'avant FLUIDE
+                # Geste d'explication: mains vers l'avant ULTRA FLUIDE
                 names = ["LShoulderPitch", "LShoulderRoll", "LElbowRoll", "LElbowYaw",
                         "RShoulderPitch", "RShoulderRoll", "RElbowRoll", "RElbowYaw",
                         "HeadPitch", "HeadYaw"]
-                # Mouvement LENT et fluide (0.5 au lieu de 0.25)
-                angles = [0.0, 0.6, -0.4, -0.8, 0.0, -0.6, 0.4, 0.8, -0.1, 0.0]
-                self.motion.post.setAngles(names, angles, 0.2)
+                # Position intermediaire pour transition douce - BRAS HAUTS
+                angles_mid = [0.0, 0.3, -0.2, -0.4, 0.0, -0.3, 0.2, 0.4, -0.05, 0.0]
+                self.motion.setAngles(names, angles_mid, 0.12)
+                time.sleep(0.5)
+                # Position finale - mouvement TRES LENT - BRAS RESTENT HAUTS
+                angles = [-0.2, 0.6, -0.4, -0.8, -0.2, -0.6, 0.4, 0.8, -0.1, 0.0]
+                self.motion.post.setAngles(names, angles, 0.12)
                 
             elif gesture_type == "question":
-                # Geste de question: main levee FLUIDE
+                # Geste de question: main levee ULTRA FLUIDE avec transition
                 side = random.choice(["L", "R"])
                 if side == "L":
                     names = ["LShoulderPitch", "LShoulderRoll", "LElbowRoll", "LElbowYaw",
                             "HeadPitch", "HeadYaw"]
-                    # Mouvement LENT et fluide
-                    angles = [-0.3, 0.5, -1.2, -0.5, 0.1, 0.2]
+                    # Position intermediaire - BRAS HAUT
+                    angles_mid = [-0.1, 0.3, -0.6, -0.3, 0.05, 0.1]
+                    self.motion.setAngles(names, angles_mid, 0.12)
+                    time.sleep(0.4)
+                    # Position finale - mouvement TRES LENT - BRAS RESTE HAUT
+                    angles = [-0.4, 0.5, -1.2, -0.5, 0.1, 0.2]
                 else:
                     names = ["RShoulderPitch", "RShoulderRoll", "RElbowRoll", "RElbowYaw",
                             "HeadPitch", "HeadYaw"]
-                    angles = [-0.3, -0.5, 1.2, 0.5, 0.1, -0.2]
-                self.motion.post.setAngles(names, angles, 0.2)
+                    # Position intermediaire - BRAS HAUT
+                    angles_mid = [-0.1, -0.3, 0.6, 0.3, 0.05, -0.1]
+                    self.motion.setAngles(names, angles_mid, 0.12)
+                    time.sleep(0.4)
+                    # Position finale - BRAS RESTE HAUT
+                    angles = [-0.4, -0.5, 1.2, 0.5, 0.1, -0.2]
+                self.motion.post.setAngles(names, angles, 0.12)
                 
             elif gesture_type == "emphasis":
-                # Geste d'emphase: mouvement FLUIDE en 2 phases (au lieu de 3)
+                # Geste d'emphase: mouvement ULTRA FLUIDE en 3 phases progressives
                 names = ["LShoulderPitch", "LShoulderRoll", "LElbowRoll",
                         "RShoulderPitch", "RShoulderRoll", "RElbowRoll",
                         "HeadPitch", "HeadYaw"]
-                # Phase 1: mains vers l'avant LENTEMENT
-                angles = [0.0, 0.5, -0.5, 0.0, -0.5, 0.5, -0.15, 0.0]
-                self.motion.post.setAngles(names, angles, 0.2)
-                time.sleep(0.3)
-                # Phase 2: leger mouvement vers le haut LENTEMENT
-                angles = [-0.1, 0.4, -0.6, -0.1, -0.4, 0.6, 0.0, 0.0]
-                self.motion.post.setAngles(names, angles, 0.2)
+                # Phase 1: debut de mouvement - TRES LENT - BRAS HAUTS
+                angles = [0.0, 0.3, -0.3, 0.0, -0.3, 0.3, -0.08, 0.0]
+                self.motion.setAngles(names, angles, 0.08)
+                time.sleep(0.5)
+                # Phase 2: mains vers l'avant - TRES LENT - BRAS RESTENT HAUTS
+                angles = [-0.2, 0.5, -0.5, -0.2, -0.5, 0.5, -0.15, 0.0]
+                self.motion.setAngles(names, angles, 0.08)
+                time.sleep(0.5)
+                # Phase 3: leger mouvement vers le haut - TRES LENT
+                angles = [-0.3, 0.4, -0.6, -0.3, -0.4, 0.6, 0.0, 0.0]
+                self.motion.post.setAngles(names, angles, 0.12)
                 
             else:  # neutral
-                # Geste neutre: mouvement TRES FLUIDE
+                # Geste neutre: mouvement ULTRA FLUIDE avec transition
                 side = random.choice(["L", "R"])
                 head_yaw = random.choice([-0.15, 0.15])
                 if side == "L":
                     names = ["LShoulderPitch", "LShoulderRoll", "LElbowRoll", "HeadYaw"]
-                    # Mouvement TRES LENT pour fluidite maximale
-                    angles = [0.2, 0.4, -0.5, head_yaw]
+                    # Position intermediaire - BRAS HAUT
+                    angles_mid = [0.0, 0.2, -0.3, head_yaw * 0.5]
+                    self.motion.setAngles(names, angles_mid, 0.08)
+                    time.sleep(0.4)
+                    # Position finale - TRES LENT pour fluidite maximale - BRAS RESTE HAUT
+                    angles = [-0.2, 0.4, -0.5, head_yaw]
                 else:
                     names = ["RShoulderPitch", "RShoulderRoll", "RElbowRoll", "HeadYaw"]
-                    angles = [0.2, -0.4, 0.5, head_yaw]
-                self.motion.post.setAngles(names, angles, 0.2)
+                    # Position intermediaire - BRAS HAUT
+                    angles_mid = [0.0, -0.2, 0.3, head_yaw * 0.5]
+                    self.motion.setAngles(names, angles_mid, 0.08)
+                    time.sleep(0.4)
+                    # Position finale - BRAS RESTE HAUT
+                    angles = [-0.2, -0.4, 0.5, head_yaw]
+                self.motion.post.setAngles(names, angles, 0.08)
                 
         except Exception as e:
             print("X Erreur geste expressif:", str(e))
@@ -686,12 +712,15 @@ class VoiceConversation:
                     "RShoulderPitch", "RShoulderRoll", "RElbowRoll", "RElbowYaw",
                     "HeadPitch", "HeadYaw"]
             
-            # Position croisee naturelle + tete centree
-            angles = [1.4, 0.1, -1.0, -0.5, 1.4, -0.1, 1.0, 0.5, 0.0, 0.0]
+            # Position intermediaire pour retour progressif - BRAS HAUTS pour eviter genoux
+            angles_mid = [0.3, 0.05, -0.5, -0.3, 0.3, -0.05, 0.5, 0.3, 0.0, 0.0]
+            self.motion.setAngles(names, angles_mid, 0.12)
+            time.sleep(0.5)
             
-            # Retour LENT et fluide (0.5 au lieu de 0.3)
-            self.motion.setAngles(names, angles, 0.7)
-            time.sleep(0.6)
+            # Position croisee naturelle + tete centree - ULTRA LENT - BRAS HAUTS
+            angles = [1.0, 0.1, -1.0, -0.5, 1.0, -0.1, 1.0, 0.5, 0.0, 0.0]
+            self.motion.setAngles(names, angles, 0.12)
+            time.sleep(0.8)
             
             # Desactiver les moteurs des bras et tete
             self.motion.setStiffnesses("LArm", 0.0)
