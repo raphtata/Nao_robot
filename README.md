@@ -1,18 +1,36 @@
 # Projet NAO V3 - Collection de Fonctionnalités
 
-Collection de projets Python pour contrôler un robot NAO V3 avec différentes fonctionnalités: conversation vocale avec IA, suivi de visage, et gestes animés.
+Collection de projets Python pour contrôler un robot NAO V3 avec différentes fonctionnalités: conversation vocale avec IA, application web Streamlit, mode wake word, suivi de visage, et gestes animés.
 
 ## 📋 Prérequis
 
-- **Python 2.7 32-bit** (pour conversation vocale et SDK local)
-- **Python 3.7** (pour suivi de visage avec OpenCV)
+- **Python 2.7 32-bit** (pour conversation vocale, wake word et SDK local)
+- **Python 3.x** (pour application Streamlit et suivi de visage avec OpenCV)
 - Robot NAO V3 connecté en Ethernet
 - Adresse IP du robot: `169.254.201.219`
-- Choregraphe 2.8 installé (pour SDK NAOqi)
+- Choregraphe 2.5/2.8 installé (pour SDK NAOqi)
 
 ## 🎯 Projets Disponibles
 
-### 1. 🗣️ Conversation Vocale avec Groq LLM
+### 1. 🌐 Application Web Streamlit (Nouveau)
+**Fichiers:** `nao_streamlit_app.py`, `nao_bridge_py27.py`  
+**Script:** `run_streamlit_app.bat`
+
+Interface web complète remplaçant les lanceurs .bat:
+- **Bouton de connexion** au robot avec configuration IP/port
+- **Chatbot interactif** affichant la conversation humain/robot
+- **Terminal en sidebar** montrant les logs en temps réel
+- **Sélecteur de langue** Français 🇫🇷 / English 🇬🇧
+- Architecture bridge Python 2.7 ↔ Python 3 via protocole JSON stdin/stdout
+
+**Lancer:**
+```bash
+.\run_streamlit_app.bat
+```
+
+---
+
+### 2. 🗣️ Conversation Vocale avec Groq LLM
 **Fichier:** `nao_voice_conversation_py27.py`  
 **Script:** `run_voice_conversation.bat`
 
@@ -20,6 +38,7 @@ Système de conversation vocale intelligent utilisant:
 - Microphone de NAO pour capturer la voix
 - Groq Whisper API pour transcription audio
 - Groq LLM (llama-3.3-70b-versatile) pour génération de réponses
+- Gestes expressifs synchronisés avec la parole
 - Animations de réflexion (grattage de tête)
 - Hochement de tête pendant l'écoute
 
@@ -32,7 +51,27 @@ Système de conversation vocale intelligent utilisant:
 
 ---
 
-### 2. 👁️ Suivi de Visage avec Caméra NAO
+### 3. 👂 Mode Wake Word - "Coucou Nao" (Nouveau)
+**Fichier:** `nao_wake_word_conversation_py27.py`  
+**Script:** `run_wake_word_mode.bat`
+
+Mode d'écoute continue avec détection de mot-clé:
+- **Écoute permanente** en arrière-plan
+- **Face tracking** continu pendant l'écoute
+- **Mouvements subtils de tête** pour rendre le robot "vivant" en idle
+- Détection du wake word **"Coucou Nao"** (et variantes)
+- Réponse "Oui je t'écoute mon ami" puis enregistrement de la commande
+- Traitement LLM + réponse avec gestes expressifs
+- Retour automatique en mode écoute
+
+**Lancer:**
+```bash
+.\run_wake_word_mode.bat
+```
+
+---
+
+### 4. 👁️ Suivi de Visage avec Caméra NAO
 **Fichier:** `nao_face_tracking_nao_camera.py`  
 **Script:** `run_face_tracking_nao.bat`
 
@@ -51,7 +90,7 @@ Suivi de visage en temps réel utilisant:
 
 ---
 
-### 3. 🤖 Gestes et Animations
+### 5. 🤖 Gestes et Animations
 **Fichier:** `nao_with_local_sdk.py`  
 **Script:** `run_simple.bat`
 
@@ -82,9 +121,22 @@ Voir le guide détaillé: `INSTALLATION_SDK.md`
 
 Le SDK est déjà inclus dans le dossier `lib/` de ce projet.
 
+### Installation Python 3 (pour application Streamlit)
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
 ### Installer les dépendances
 
-**Pour conversation vocale:**
+**Pour conversation vocale (Python 2.7):**
+```bash
+C:\Python27\python.exe -m pip install requests==2.27.1 paramiko==2.7.2
+```
+
+**Pour application Streamlit (Python 3 - venv):**
 ```bash
 pip install -r requirements.txt
 ```
@@ -96,13 +148,25 @@ pip install -r requirements_face_tracking.txt
 
 ## ⚙️ Configuration
 
-### Fichier .env (Conversation Vocale)
+### Fichier .env
 
-Créez un fichier `.env` avec vos clés API Groq:
+Créez un fichier `.env` à la racine du projet (voir `.env.example` pour référence):
 
 ```bash
+# API Groq
 GROQ_API_KEY=votre_cle_api_groq
 LLM_MODEL=llama-3.3-70b-versatile
+
+# Langue: "fr" ou "en"
+NAO_LANGUAGE=fr
+
+# Prompts système (personnalisables)
+SYSTEM_PROMPT_FR=Tu es NAO, un robot assistant sympathique...
+SYSTEM_PROMPT_EN=You are NAO, a friendly robot assistant...
+
+# Messages d'accueil
+GREETING_FR=Bonjour! Je suis NAO, un robot assistant.
+GREETING_EN=Hello! I am NAO, a robot assistant.
 ```
 
 ### Paramètres de Conversation
@@ -132,20 +196,28 @@ Les angles des articulations peuvent être ajustés dans les fonctions d'animati
 
 ```
 windsurf-project-2/
+├── 🌐 Application Web Streamlit
+│   ├── nao_streamlit_app.py               # Interface web Streamlit (Python 3)
+│   ├── nao_bridge_py27.py                 # Bridge NAOqi (Python 2.7)
+│   └── run_streamlit_app.bat              # Lanceur Windows
+│
 ├── 🗣️ Conversation Vocale
-│   ├── nao_voice_conversation_py27.py    # Script principal (Python 2.7)
+│   ├── nao_voice_conversation_py27.py     # Script principal (Python 2.7)
 │   ├── run_voice_conversation.bat         # Lanceur Windows
-│   ├── VOICE_CONVERSATION.md              # Documentation
-│   └── .env                               # Configuration API Groq
+│   └── VOICE_CONVERSATION.md              # Documentation
+│
+├── 👂 Mode Wake Word
+│   ├── nao_wake_word_conversation_py27.py # Écoute continue (Python 2.7)
+│   └── run_wake_word_mode.bat             # Lanceur Windows
 │
 ├── 👁️ Suivi de Visage
-│   ├── nao_face_tracking_nao_camera.py   # Suivi avec caméra NAO
-│   ├── run_face_tracking_nao.bat         # Lanceur Windows
-│   ├── FACE_TRACKING_NAO_CAMERA.md       # Documentation
+│   ├── nao_face_tracking_nao_camera.py    # Suivi avec caméra NAO
+│   ├── run_face_tracking_nao.bat          # Lanceur Windows
+│   ├── FACE_TRACKING_NAO_CAMERA.md        # Documentation
 │   └── requirements_face_tracking.txt     # Dépendances
 │
 ├── 🤖 Gestes et Animations
-│   ├── nao_with_local_sdk.py             # Gestes animés
+│   ├── nao_with_local_sdk.py              # Gestes animés
 │   └── run_simple.bat                     # Lanceur Windows
 │
 ├── 📚 Documentation
@@ -154,13 +226,15 @@ windsurf-project-2/
 │   └── INSTALL_PYTHON27.md                # Guide Python 2.7
 │
 ├── 🔧 Configuration
-│   ├── requirements.txt                   # Dépendances conversation
+│   ├── .env                               # Variables d'environnement (API, langue)
+│   ├── .env.example                       # Exemple de configuration
+│   ├── requirements.txt                   # Dépendances Python 3 (Streamlit)
 │   ├── requirements_face_tracking.txt     # Dépendances face tracking
 │   └── .gitignore                         # Fichiers ignorés par Git
 │
 └── 📦 Ressources
     ├── lib/                               # SDK NAOqi local
-    └── venv/                              # Environnement virtuel
+    └── venv/                              # Environnement virtuel Python 3
 ```
 
 ## 🐛 Dépannage
@@ -229,7 +303,13 @@ Pendant l'enregistrement audio:
 - Historique de conversation maintenu
 - Réponses contextuelles du LLM
 - Transcription précise avec Whisper
-- Parole naturelle en français avec accents
+- Parole naturelle en français ou anglais (configurable)
+
+### Application Web Streamlit
+- Interface moderne avec chatbot intégré
+- Terminal de logs en temps réel dans la sidebar
+- Sélecteur de langue FR/EN dynamique
+- Architecture bridge Python 2.7 ↔ Python 3 transparente
 
 ## 📚 Ressources
 
@@ -258,4 +338,4 @@ Ce projet est fourni à des fins éducatives et de démonstration.
 
 ---
 
-**Développé pour NAO V3 avec NAOqi SDK 2.8**
+**Développé pour NAO V3 avec NAOqi SDK 2.5/2.8**
