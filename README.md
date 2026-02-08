@@ -26,6 +26,11 @@ Interface web complète remplaçant les lanceurs .bat:
 **Lancer:**
 ```bash
 .\run_streamlit_app.bat
+
+ou streamlit run nao_streamlit_app.py --server.port 8501y --server.port 8       
+
+
+
 ```
 
 ---
