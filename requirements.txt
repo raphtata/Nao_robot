@@ -1,3 +1,10 @@
-# Dependances pour la conversation vocale avec Groq LLM (Python 2.7 compatible)
-requests==2.27.1
-paramiko==2.7.2
+# ============================================================
+# Dependances Python 2.7 (NAO Bridge - installees via pip2)
+# ============================================================
+# requests==2.27.1
+# paramiko==2.7.2
+
+# ============================================================
+# Dependances Python 3 (Application Streamlit - venv)
+# ============================================================
+streamlit>=1.30.0
