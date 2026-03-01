@@ -11,6 +11,7 @@ ENV/
 dist/
 build/
 lib/
+kinect_fichiers/
 
 # Secrets et configuration
 .env
