@@ -37,7 +37,7 @@ with col_b:
 with col_c:
     auto_refresh = st.checkbox("Auto refresh", value=True)
 
-refresh_ms = st.slider("Refresh interval (ms)", min_value=100, max_value=1000, value=200, step=50)
+refresh_ms = st.slider("Refresh interval (ms)", min_value=30, max_value=500, value=50, step=10)
 
 if "sock" not in st.session_state:
     st.session_state.sock = None
@@ -103,6 +103,7 @@ def poll_frames(max_packets=30):
 
 
 def decode_camera_frame(frame):
+    return None
     if not frame:
         return None
     b64 = frame.get("camera_jpeg_b64", "")
@@ -133,30 +134,39 @@ with left:
     else:
         joints = frame.get("joints", {})
 
-        fig, ax = plt.subplots(figsize=(6, 8))
+        fig, ax = plt.subplots(figsize=(7, 7))
 
+        # Apply Y translation to center skeleton in graph
+        Y_OFFSET = 0.4
+        
         xs = []
         ys = []
         for _name, p in joints.items():
             xs.append(p.get("x", 0.0))
-            ys.append(p.get("y", 0.0))
+            ys.append(p.get("y", 0.0) + Y_OFFSET)
 
-        ax.scatter(xs, ys, s=60)
+        ax.scatter(xs, ys, s=80, c='red', zorder=3)
 
         for a, b in EDGES:
             if a in joints and b in joints:
                 ax.plot(
                     [joints[a]["x"], joints[b]["x"]],
-                    [joints[a]["y"], joints[b]["y"]],
-                    linewidth=2,
+                    [joints[a]["y"] + Y_OFFSET, joints[b]["y"] + Y_OFFSET],
+                    linewidth=3,
+                    color='blue',
+                    zorder=2,
                 )
 
-        ax.set_xlabel("X")
-        ax.set_ylabel("Y")
-        ax.set_title("Upper-body skeleton (camera space)")
-        ax.grid(True, alpha=0.3)
-        ax.set_aspect("equal", adjustable="box")
-        plt.gca().invert_yaxis()
+        # Fixed axis limits for stable render (typical MediaPipe world landmark range)
+        ax.set_xlim(-0.8, 0.8)
+        ax.set_ylim(-0.6, 0.6)
+        ax.invert_yaxis()
+        
+        ax.set_xlabel("X (meters)", fontsize=10)
+        ax.set_ylabel("Y (meters)", fontsize=10)
+        ax.set_title("Upper-body skeleton (3D world coordinates)", fontsize=12, fontweight='bold')
+        ax.grid(True, alpha=0.3, linestyle='--')
+        ax.set_facecolor('#f0f0f0')
 
         st.pyplot(fig)
 
@@ -165,7 +175,7 @@ with left:
     if camera_rgb is None:
         st.info("No camera preview received yet from streamer.")
     else:
-        st.image(camera_rgb, channels="RGB", use_container_width=True)
+        st.image(camera_rgb, channels="RGB", width="stretch")
 
 with right:
     st.subheader("Status")
